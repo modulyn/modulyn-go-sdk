@@ -1,4 +1,4 @@
-module modulyn-go-sdk
+module github.com/modulyn/modulyn-go-sdk
 
 go 1.24.2
 
