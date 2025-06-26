@@ -10,6 +10,8 @@ import (
 	"github.com/google/uuid"
 )
 
+var datastore store
+
 func Initialize(environmentID string, applicationID string) error {
 	if environmentID == "" {
 		return fmt.Errorf("environmentID cannot be empty")
@@ -19,51 +21,67 @@ func Initialize(environmentID string, applicationID string) error {
 		applicationID = uuid.NewString()
 	}
 
-	sseURL := fmt.Sprintf("http://localhost:8080/events?sdk_key=%s&appid=%s", environmentID, applicationID)
-	response, err := http.Get(sseURL)
-	if err != nil {
-		return fmt.Errorf("failed to connect to SSE server: %w", err)
-	}
-	defer response.Body.Close()
+	doneChan := make(chan bool, 1)
 
-	if response.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to connect to SSE server, status code: %d", response.StatusCode)
-	}
-
-	fmt.Printf("Successfully connected to modulyn stream\n")
-
-	reader := bufio.NewReader(response.Body)
-
-	for {
-		line, err := reader.ReadString('\n')
+	go func() {
+		sseURL := fmt.Sprintf("http://localhost:8080/events?sdk_key=%s&appid=%s", environmentID, applicationID)
+		response, err := http.Get(sseURL)
 		if err != nil {
-			return fmt.Errorf("error reading from SSE stream: %w", err)
+			return
+		}
+		defer response.Body.Close()
+
+		if response.StatusCode != http.StatusOK {
+			return
 		}
 
-		line = strings.TrimSpace(line)
+		fmt.Printf("Successfully connected to modulyn stream\n")
 
-		if after, ok := strings.CutPrefix(line, "data:"); ok {
-			line = after
+		reader := bufio.NewReader(response.Body)
+
+		for {
+			line, err := reader.ReadString('\n')
+			if err != nil {
+				return
+			}
+
 			line = strings.TrimSpace(line)
-			fmt.Printf("Received data: %s\n", line)
 
-			var event Event
-			if err := json.Unmarshal([]byte(line), &event); err != nil {
-				return fmt.Errorf("error unmarshalling event data: %w", err)
-			}
+			if after, ok := strings.CutPrefix(line, "data:"); ok {
+				line = after
+				line = strings.TrimSpace(line)
+				fmt.Printf("Received data: %s\n", line)
 
-			fmt.Printf("Event Type: %s", event.Type)
-
-			var features []Feature
-			if event.Type == "all_features" {
-				if err := json.Unmarshal(event.Data, &features); err != nil {
-					return fmt.Errorf("error unmarshalling features: %w", err)
+				var event Event
+				if err := json.Unmarshal([]byte(line), &event); err != nil {
+					return
 				}
 
-				for _, feature := range features {
-					fmt.Printf("Feature ID: %s, Name: %s, Enabled: %t\n", feature.ID, feature.Name, feature.Enabled)
+				fmt.Printf("Event Type: %s", event.Type)
+
+				var features []Feature
+				if event.Type == "all_features" {
+					if err := json.Unmarshal(event.Data, &features); err != nil {
+						return
+					}
+
+					for _, feature := range features {
+						datastore.addOrUpdate(feature)
+						fmt.Printf("Feature ID: %s, Name: %s, Enabled: %t\n", feature.ID, feature.Name, feature.Enabled)
+					}
+
+					doneChan <- true
 				}
 			}
+		}
+	}()
+
+	for range 1 {
+		isDone := <-doneChan
+		if !isDone {
+			return fmt.Errorf("error initializing modulyn server")
 		}
 	}
+
+	return nil
 }
