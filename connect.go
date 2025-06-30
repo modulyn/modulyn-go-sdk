@@ -59,8 +59,9 @@ func Initialize(environmentID string, applicationID string) error {
 
 				fmt.Printf("Event Type: %s", event.Type)
 
-				var features []Feature
-				if event.Type == "all_features" {
+				switch event.Type {
+				case "all_features":
+					var features []Feature
 					if err := json.Unmarshal(event.Data, &features); err != nil {
 						return
 					}
@@ -71,6 +72,23 @@ func Initialize(environmentID string, applicationID string) error {
 					}
 
 					doneChan <- true
+				case "feature_created", "feature_updated":
+					var newFeature Feature
+					if err := json.Unmarshal(event.Data, &newFeature); err != nil {
+						return
+					}
+
+					datastore.addOrUpdate(newFeature)
+					fmt.Printf("Feature Created - ID: %s, Name: %s, Enabled: %t\n", newFeature.ID, newFeature.Name, newFeature.Enabled)
+
+				case "feature_deleted":
+					var deletedFeature Feature
+					if err := json.Unmarshal(event.Data, &deletedFeature); err != nil {
+						return
+					}
+
+					datastore.remove(deletedFeature)
+					fmt.Printf("Feature Deleted - ID: %s, Name: %s\n", deletedFeature.ID, deletedFeature.Name)
 				}
 			}
 		}
