@@ -50,14 +50,11 @@ func Initialize(environmentID string, applicationID string) error {
 			if after, ok := strings.CutPrefix(line, "data:"); ok {
 				line = after
 				line = strings.TrimSpace(line)
-				fmt.Printf("Received data: %s\n", line)
 
 				var event Event
 				if err := json.Unmarshal([]byte(line), &event); err != nil {
 					return
 				}
-
-				fmt.Printf("Event Type: %s", event.Type)
 
 				switch event.Type {
 				case "all_features":
@@ -68,7 +65,6 @@ func Initialize(environmentID string, applicationID string) error {
 
 					for _, feature := range features {
 						datastore.addOrUpdate(feature)
-						fmt.Printf("Feature ID: %s, Name: %s, Enabled: %t\n", feature.ID, feature.Name, feature.Enabled)
 					}
 
 					doneChan <- true
@@ -79,7 +75,6 @@ func Initialize(environmentID string, applicationID string) error {
 					}
 
 					datastore.addOrUpdate(newFeature)
-					fmt.Printf("Feature Created - ID: %s, Name: %s, Enabled: %t\n", newFeature.ID, newFeature.Name, newFeature.Enabled)
 
 				case "feature_deleted":
 					var deletedFeature Feature
@@ -88,7 +83,6 @@ func Initialize(environmentID string, applicationID string) error {
 					}
 
 					datastore.remove(deletedFeature)
-					fmt.Printf("Feature Deleted - ID: %s, Name: %s\n", deletedFeature.ID, deletedFeature.Name)
 				}
 			}
 		}
