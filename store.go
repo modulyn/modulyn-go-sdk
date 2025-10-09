@@ -15,7 +15,7 @@ func (s *store) addOrUpdate(feature Feature) {
 	if s.features == nil {
 		s.features = make(map[string]Feature)
 	}
-	s.features[feature.Name] = feature
+	s.features[feature.Label] = feature
 }
 
 func (s *store) remove(feature Feature) {
@@ -24,5 +24,5 @@ func (s *store) remove(feature Feature) {
 	if s.features == nil {
 		return
 	}
-	delete(s.features, feature.Name)
+	delete(s.features, feature.Label)
 }

@@ -7,11 +7,9 @@ type Event struct {
 
 type Feature struct {
 	ID        string    `json:"id"`
-	Name      string    `json:"name"`
+	Label     string    `json:"label"`
 	Enabled   bool      `json:"enabled"`
 	JsonValue JsonValue `json:"jsonValue"`
-	CreatedAt string    `json:"createdAt"`
-	UpdatedAt string    `json:"updatedAt"`
 }
 
 type JsonValue struct {
